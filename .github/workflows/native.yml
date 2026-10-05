@@ -24,6 +24,9 @@ jobs:
       - name: Check OpenAPI feature
         run: cargo check --features openapi
 
+      - name: Check without the SDK
+        run: cargo check --no-default-features --features openapi
+
       - name: Run native tests
         run: cargo nextest run --no-fail-fast
 

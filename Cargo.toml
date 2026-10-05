@@ -23,6 +23,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[example]]
+name = "create_user"
+# The example signs in with the SDK
+required-features = ["sdk"]
+
 [[bin]]
 name = "bundle_specs_npm"
 # The npm build ships the transforms and writes their data twin from the native crate
@@ -49,13 +54,18 @@ tsify-next = { version = "0.5.6", default-features = false, features = ["js"] }
 wasm-bindgen-test = "0.3.68"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-pubky = "0.10.0"
+# Optional: only `PubkyId::to_public_key` and the `From<PublicKey>`/`From<Keypair>` impls use
+# the SDK. An indexer on another SDK version turns the `sdk` feature off.
+pubky = { version = "0.10.0", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
 anyhow = "1.0.100"
 
 [features]
+default = ["sdk"]
+# The SDK conversions on `PubkyId`; off, the crate has no `pubky` dependency.
+sdk = ["dep:pubky"]
 openapi = ["utoipa"]
 # The v0 to v1 transforms. Off by default for the crate: only a client that runs the
 # migration needs them. The npm package is built with them, since it is that client.
