@@ -15,7 +15,7 @@ use crate::{ParsedUri, Resource};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PubkyId {
     z32: String,
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     public_key: pubky::PublicKey,
 }
 
@@ -45,13 +45,17 @@ impl PubkyId {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
+    /// Without the SDK there is no key to cache, so this is the z32 format check alone, as
+    /// the wasm32 build has always been. See `to_public_key` for what the `sdk` feature adds.
+    #[cfg(any(target_arch = "wasm32", not(feature = "sdk")))]
     pub fn try_from(s: &str) -> Result<Self, String> {
         Self::validate(s)?;
         Ok(Self { z32: s.to_string() })
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+    /// With the SDK, the decoded bytes must also be an Ed25519 curve point, and the key is
+    /// cached so `to_public_key` cannot fail.
     pub fn try_from(s: &str) -> Result<Self, String> {
         // Include the stricter wasm32-specific validation for consistency
         Self::validate(s)?;
@@ -76,13 +80,13 @@ impl PubkyId {
     ///
     /// This is infallible on native targets because the key was validated
     /// during `PubkyId` construction and cached.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     pub fn to_public_key(&self) -> pubky::PublicKey {
         self.public_key.clone()
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
 impl From<pubky::PublicKey> for PubkyId {
     fn from(pk: pubky::PublicKey) -> Self {
         Self {
@@ -92,7 +96,7 @@ impl From<pubky::PublicKey> for PubkyId {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
 impl From<pubky::Keypair> for PubkyId {
     fn from(keypair: pubky::Keypair) -> Self {
         Self::from(keypair.public_key())
@@ -142,8 +146,27 @@ impl<'de> Deserialize<'de> for PubkyId {
 mod tests {
     use super::*;
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     use pubky::Keypair;
+
+    /// 52 z32 characters that decode cleanly but are not an Ed25519 curve point: the one class
+    /// of input whose verdict the `sdk` feature changes.
+    const NON_CURVE_POINT: &str = "byyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy";
+
+    #[test]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+    fn test_with_the_sdk_a_non_curve_point_is_rejected() {
+        assert!(PubkyId::try_from(NON_CURVE_POINT).is_err());
+    }
+
+    #[test]
+    #[cfg(any(target_arch = "wasm32", not(feature = "sdk")))]
+    fn test_without_the_sdk_only_the_z32_format_is_checked() {
+        assert_eq!(
+            PubkyId::try_from(NON_CURVE_POINT).unwrap().as_ref(),
+            NON_CURVE_POINT
+        );
+    }
 
     #[test]
     fn test_try_from_valid() {
@@ -177,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     fn test_from_public_key() {
         // Create a keypair and extract the public key
         let keypair = Keypair::random();
@@ -193,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     fn test_from_keypair() {
         // Create a keypair
         let keypair = Keypair::random();
@@ -208,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     fn test_from_public_key_produces_valid_pubky_id() {
         // Ensure the PubkyId created from PublicKey is valid (52 char z32)
         let keypair = Keypair::random();
@@ -224,7 +247,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     fn test_from_keypair_produces_valid_pubky_id() {
         // Ensure the PubkyId created from Keypair is valid (52 char z32)
         let keypair = Keypair::random();
@@ -239,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     fn test_from_keypair_and_public_key_produce_same_result() {
         // Create a keypair
         let keypair = Keypair::random();
@@ -258,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     fn test_to_public_key_is_infallible_for_valid_pubky_id() {
         let keypair = Keypair::random();
         let expected_public_key = keypair.public_key();

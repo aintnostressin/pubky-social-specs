@@ -25,6 +25,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[example]]
+name = "create_user"
+# The example signs in with the SDK
+required-features = ["sdk"]
+
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
@@ -45,13 +50,21 @@ tsify-next = { version = "0.5.6", default-features = false, features = ["js"] }
 wasm-bindgen-test = "0.3.68"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-pubky = "0.10.0"
+# Optional: the SDK backs the cached public key on `PubkyId` and its conversions. A
+# consumer pinned to another `pubky` release turns the `sdk` feature off.
+pubky = { version = "0.10.0", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
 anyhow = "1.0.100"
 
 [features]
+default = ["sdk"]
+# The `pubky` SDK: `PubkyId::to_public_key`, the `From<PublicKey>`/`From<Keypair>`
+# conversions, and the Ed25519 curve-point check on native construction. Off, the crate
+# has no `pubky` dependency and `PubkyId` validates the z32 format only, as the wasm32
+# build already does.
+sdk = ["dep:pubky"]
 openapi = ["utoipa"]
 
 [profile.release]
