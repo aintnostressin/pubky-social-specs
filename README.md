@@ -50,13 +50,26 @@ For a full homeserver flow, see [`examples/create_user.rs`](https://github.com/p
 
 ## Features
 
-| Feature   | Purpose                        |
-| --------- | ------------------------------ |
-| `openapi` | OpenAPI schemas via `utoipa`   |
+| Feature   | Purpose                                                        |
+| --------- | -------------------------------------------------------------- |
+| `sdk`     | `PubkyId` conversions to and from the `pubky` SDK keys (default) |
+| `openapi` | OpenAPI schemas via `utoipa`                                   |
 
 ```toml
 pubky-app-specs = { version = "0.8", features = ["openapi"] }
 ```
+
+`sdk` is the only feature that pulls in the `pubky` SDK. It backs `PubkyId::to_public_key`, the
+`From<PublicKey>` and `From<Keypair>` conversions, and the Ed25519 curve-point check that native
+`PubkyId` construction performs. A consumer pinned to another `pubky` release turns it off:
+
+```toml
+pubky-app-specs = { version = "0.8", default-features = false, features = ["openapi"] }
+```
+
+Without it the crate has no `pubky` dependency and `PubkyId` validates the z32 format only, which
+is what the wasm32 build has always done. A consumer that needs a real public key, to verify a
+signature or to address a homeserver, does the curve-point check itself.
 
 - **MSRV:** 1.89 (see `rust-version` in `Cargo.toml`)
 - **API docs:** [docs.rs/pubky-app-specs](https://docs.rs/pubky-app-specs)
