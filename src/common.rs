@@ -206,6 +206,10 @@ fn mint_from(now: i64, last_minted: &AtomicI64) -> i64 {
             last + 1
         }
     };
+    // `fetch_update` is deprecated in favour of `try_update`, which is stable only since Rust
+    // 1.95, past the 1.89 MSRV. Allowed rather than hand-rolled: the replacement for this one
+    // call is the compare-exchange loop it already is. Drop this when the MSRV reaches 1.95.
+    #[allow(deprecated)]
     let prev = last_minted
         .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |last| Some(bump(last)))
         .expect("closure always returns Some");
